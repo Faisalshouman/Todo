@@ -35,10 +35,17 @@ export default function TodoList() {
     changeToggle(e.target.value)
   }
 
-  useEffect(()=>{
-    const storageTodos = JSON.parse(localStorage.getItem("todo") ?? [])
-    setTodo(storageTodos)
-  },[setTodo])
+  useEffect(() => {
+    const storedTodo = localStorage.getItem("todo");
+    if (storedTodo) {
+      try {
+        const storageTodos = JSON.parse(storedTodo);
+        setTodo(storageTodos);
+      } catch (error) {
+        console.error("Error parsing stored todo data:", error);
+      }
+    }
+  }, [setTodo]);
 
 
   const todom = renderedTodo.map((t) => {
