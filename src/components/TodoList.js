@@ -36,7 +36,7 @@ export default function TodoList() {
   }
 
   useEffect(()=>{
-    const storageTodos = JSON.parse(localStorage.getItem("todo"))
+    const storageTodos = JSON.parse(localStorage.getItem("todo") ?? [])
     setTodo(storageTodos)
   },[setTodo])
 
