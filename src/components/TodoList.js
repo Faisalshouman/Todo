@@ -9,20 +9,34 @@ import Todo from './Todo';
 import Grid from '@mui/material/Unstable_Grid2';
 import TextField from '@mui/material/TextField';
 import Button from '@mui/material/Button';
-import { v4 as uid } from 'uuid'
-import { useContext, useEffect, useState } from 'react';
-import { TodoContext } from '../contexts/TodoContext';
+import { useEffect, useMemo, useState } from 'react';
+import Dialog from '@mui/material/Dialog';
+import DialogActions from '@mui/material/DialogActions';
+import DialogContent from '@mui/material/DialogContent';
+import DialogContentText from '@mui/material/DialogContentText';
+import DialogTitle from '@mui/material/DialogTitle';
+import {useToast} from '../contexts/SnackContext';
+import { useTodos } from '../contexts/TodoContext';
+
+
 
 
 
 export default function TodoList() {
-  const {todo , setTodo} = useContext(TodoContext)
   const [initTitle , setTitle] = useState('')
   const [displayedToggle , changeToggle] = useState("All")
+  const [dialoge , setDialoge] = useState({})
+  const [open, setOpen] = useState(false);
+  const [openUpdate, setOpenUpdate] = useState(false);
+  const {OpenCloseSnack} = useToast()
+  const {todo ,dispatch} = useTodos()
+
+
 
   let renderedTodo = todo
-  const incompTodo = todo.filter((t)=>{return !t.isCompleted})
-  const compTodo = todo.filter((t)=>{return t.isCompleted})
+  const incompTodo = useMemo(()=>{return todo.filter((t)=>{return !t.isCompleted})} , [todo]) 
+  const compTodo = useMemo(()=>{return todo.filter((t)=>{return t.isCompleted})} , [todo])
+
   if (displayedToggle === "Incompleted"){
     renderedTodo = incompTodo
   } else if (displayedToggle === "Completed"){
@@ -39,34 +53,119 @@ export default function TodoList() {
     const storedTodo = localStorage.getItem("todo");
     if (storedTodo) {
       try {
-        const storageTodos = JSON.parse(storedTodo);
-        setTodo(storageTodos);
+        dispatch({type: 'storage' , payload : storedTodo})
       } catch (error) {
         console.error("Error parsing stored todo data:", error);
       }
     }
-  }, [setTodo]);
+  }, [dispatch]);
 
 
-  const todom = renderedTodo.map((t) => {
-    return <Todo id={t.id} Todo={t} />
-  })
+
   
   
     function handleChange(){
-      const newTodo =
-      {id: uid(),
-      title: initTitle,
-      details: '',
-      isCompleted: false,}
 
-      const updatedtodo = [...todo , newTodo]
-      setTodo(updatedtodo)
-      localStorage.setItem("todo",JSON.stringify(updatedtodo))
+      dispatch({type : 'added' , payload : {title : initTitle}})
+      OpenCloseSnack('Errand was added successfully')
     }
+
+
+    function handleClickOpen (todoInfo){
+      setDialoge(todoInfo)
+      setOpen(true);
+      
+    }
+    const handleClose = () => {
+      setOpen(false);
+    };
+  
+    function handleClickOpenUpdate(todoInfo){
+      setDialoge(todoInfo)
+      setOpenUpdate(true);
+    }
+  
+    const handleCloseUpdate = () => {
+      setOpenUpdate(false);
+    };
+  
+  
+      function handleDelete(){
+
+      dispatch({type : 'deleted' , payload : dialoge})
+      setOpen(false)
+      OpenCloseSnack('Errand was deleted successfully')
+        }
+  
+        function handleConfirmUpdate(){
+        dispatch({type : 'updated' , payload : dialoge})
+        setOpenUpdate(false)
+        OpenCloseSnack('Errand was updated successfully')
+          }
+
+          const todom = renderedTodo.map((t) => {
+            return <Todo key={t.id} Todo={t} showDelete={handleClickOpen} showUpdate={handleClickOpenUpdate} />
+            ;
+          });
+    
+
 
   return (
     <>
+          { /*delete dialog*/ }
+      <Dialog
+        open={open}
+        keepMounted
+        onClose={handleClose}
+        aria-describedby="alert-dialog-slide-description"
+        style={{  borderRadius: '35px' ,}}
+      >
+        <DialogTitle>{'Deleting this errand'}</DialogTitle>
+        <DialogContent>
+          <DialogContentText id="alert-dialog-slide-description">
+          Are you sure that you want to delete this errand ?
+          </DialogContentText>
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={handleClose}>No,I don't want to</Button>
+          <Button   onClick={handleDelete}>yes, please</Button>
+        </DialogActions>
+      </Dialog>
+      { /* end of delete dialog*/ }
+      { /*update dialog*/ }
+      <Dialog open={openUpdate} onClose={handleCloseUpdate}>
+        <DialogTitle>Edit this errand</DialogTitle>
+        <DialogContent>
+          <DialogContentText>
+            You can change the title and the details of this errand.
+          </DialogContentText>
+          <TextField
+            autoFocus
+            margin="dense"
+            id="name"
+            label="Title"
+            fullWidth
+            variant="standard"
+            value={dialoge.title}
+            onChange={(e)=>{setDialoge({...dialoge , title: e.target.value})}}
+          />
+          <TextField
+            autoFocus
+            margin="dense"
+            id="name"
+            label="Details"
+            fullWidth
+            variant="standard"
+            value={dialoge.details}
+            onChange={(e)=>{setDialoge({...dialoge , details: e.target.value})}}
+          />
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={handleCloseUpdate}>Cancel</Button>
+          <Button onClick={handleConfirmUpdate}>Confirm</Button>
+        </DialogActions>
+      </Dialog>
+      { /* end of update dialog*/ }
       <Container maxWidth="sm"  >
       <Card sx={{ maxWidth: "md" }} style={{background: "#F5F5F5" , borderRadius: "20px", }} >
           <CardContent style={{maxHeight: "80vh" , overflow: "scroll"}}>
